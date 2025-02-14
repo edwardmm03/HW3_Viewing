@@ -38,11 +38,16 @@ def camera_transform(vertices, eye, gaze, up):
     ])
 
     transform = np.multiply(m1,m2)
-    newvertices = np.multiply(vertices,transform)
+    newvertices = np.array([])
+    for point in vertices:
+        #i think this is making my matrices the correct size
+        np.append(point,1)
+        np.append(newvertices,np.multiply(transform,np.transpose(point)))
+
     return newvertices
 
 # Projection Transformation
-def project_vertices(vertices, projection_type="perspective", near=1, far=10, fov=np.pi/4, aspect=1.0):
+def project_vertices(vertices, projection_type, near=1, far=10, fov=np.pi/4, aspect=1.0):
     """
     TODO: complete this function
 
@@ -50,12 +55,26 @@ def project_vertices(vertices, projection_type="perspective", near=1, far=10, fo
     - perspective: applies a perspective projection.
     - orthographic: applies an orthographic projection.
     """
-    pass
+    #if projection_type == "projection":
+     #   pass
+    #else:
+        #performs an orthographic projection transformation
+     #   Morth = np.array([])
+
+    return vertices
 
 # Viewport Transformation
 def viewport_transform(vertices, width, height):
-    # TODO: complete this function
-    pass
+    Mvp = np.array([width/2,0,0,(width-1)/2],
+                   [0, height/2,0,(height-1)/2],
+                   [0,0,1,0],
+                   [0,0,0,1])
+
+    newvertices = np.array([])
+    for point in vertices:
+        np.append(point,1)
+        np.append(newvertices,np.multiply(Mvp,np.transpose(point)))
+    return newvertices
 
 # Render the scene
 def render_scene(vertices, edges, ax, **kwargs):
