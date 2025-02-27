@@ -16,11 +16,10 @@ def create_cube():
 
 # Camera Transformation
 def camera_transform(vertices, eye, gaze, up):
-    # TODO: complete this function
     gnorm = gaze/np.linalg.norm(gaze)
     w = (-1*gaze)/gnorm
 
-    u = (up*w)/(np.linalg.norm(up*w))
+    u = (np.cross(up,w))/(np.linalg.norm(up*w))
 
     v = w *u
 
@@ -38,43 +37,69 @@ def camera_transform(vertices, eye, gaze, up):
     ])
 
     transform = np.multiply(m1,m2)
-    newvertices = np.array([])
-    for point in vertices:
-        #i think this is making my matrices the correct size
-        np.append(point,1)
-        np.append(newvertices,np.multiply(transform,np.transpose(point)))
+    
+    vp_vertices = np.hstack((vertices,np.ones([8,1]))) #appending a 1 to the end of each point for proper sizing
+    res_pts = transform @ vp_vertices.T
 
-    return newvertices
+    res = res_pts[:2,:] #only getting points from the matrix
+    return res
 
 # Projection Transformation
 def project_vertices(vertices, projection_type, near=1, far=10, fov=np.pi/4, aspect=1.0):
-    """
-    TODO: complete this function
+    
+    #assume r is 1 and l is -1
+    r =1
+    t =1
+    l =-1
+    b=-1
+    M = np.array([
+            [2/(r-l), 0,0, -(r+l)/(r-l)],
+            [0,2/(t-b),0,-(t+b)/(t-b)],
+            [0,0,2/(near-far),-(near+far)/(near-far)],
+            [0,0,0,1]
+        ])
 
-    Apply a projection transformation to 3D vertices.
-    - perspective: applies a perspective projection.
-    - orthographic: applies an orthographic projection.
-    """
-    #if projection_type == "projection":
-     #   pass
+    if projection_type == "perspective":
+        #performs a perspective projection type
+        M = np.array([
+            [near,0,0,0],
+            [0,near,0,0],
+            [0,0,near + far, -near*far],
+            [0,0,1,0]
+        ])
+        #M = Morth @ Mper
     #else:
-        #performs an orthographic projection transformation
-     #   Morth = np.array([])
+     #   M = np.array([
+      #      [2/(r-l), 0,0, -(r+l)/(r-l)],
+       #     [0,2/(t-b),0,-(t+b)/(t-b)],
+        #    [0,0,2/(near-far),-(near+far)/(near-far)],
+         #   [0,0,0,1]
+        #])
 
-    return vertices
+    vp_vertices = np.hstack((vertices,np.ones([8,1]))) #appending a 1 to the end of each point for proper sizing    
+    res_pts = vp_vertices @ M.T
+
+    if projection_type == "perspective":
+        res_pts[:,0] = res_pts[:,0]/res_pts[:,3]
+        res_pts[:,1] = res_pts[:,1]/res_pts[:,3]
+        res_pts[:,2] = res_pts[:,2]/res_pts[:,3]
+
+    return res_pts[:,0:3]
 
 # Viewport Transformation
 def viewport_transform(vertices, width, height):
-    Mvp = np.array([width/2,0,0,(width-1)/2],
-                   [0, height/2,0,(height-1)/2],
-                   [0,0,1,0],
-                   [0,0,0,1])
+    Mvp = np.array([
+        [width/2,0,0,(width-1)/2],
+        [0, height/2,0,(height-1)/2],
+        [0,0,1,0],
+        [0,0,0,1]
+    ])
 
-    newvertices = np.array([])
-    for point in vertices:
-        np.append(point,1)
-        np.append(newvertices,np.multiply(Mvp,np.transpose(point)))
-    return newvertices
+    vp_vertices = np.hstack((vertices,np.ones([8,1]))) #appending a 1 to the end of each point for proper sizing
+    res_pts = Mvp @ vp_vertices.T #transposing the vertices so the matrix multiplication is correct
+
+    res = res_pts[:2,:] #only getting points from the matrix
+    return res
 
 # Render the scene
 def render_scene(vertices, edges, ax, **kwargs):
