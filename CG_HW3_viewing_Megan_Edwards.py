@@ -17,28 +17,37 @@ def create_cube():
 # Camera Transformation
 def camera_transform(vertices, eye, gaze, up):
     gnorm = gaze/np.linalg.norm(gaze)
-    w = -1*gnorm
+    w = (-1*gaze)/gnorm
 
-    u = (np.cross(up,w))
-    u = u/(np.linalg.norm(u))
+    u = (np.cross(up,w))/(np.linalg.norm(up*w))
 
-    v = np.cross(w,u)
+    v = w *u
 
-    M_cam = np.eye(4)
-    M_cam [0:3,0:3] = [u,v,w]
-    M_cam[0:3,3] = eye
-    M_cam = np.linalg.inv(M_cam)
-    print(M_cam)
+    m1 = np.array([
+        [u[0],u[1],u[2],0],
+        [v[0],v[1],v[2],0],
+        [w[0],w[1],w[2],0],
+        [0,0,0,1]
+    ])
+    m2 = np.array([
+        [1,0,0,-1*eye[0]],
+        [0,1,0,-1*eye[1]],
+        [0,0,1,-1*eye[2]],
+        [0,0,0,1]
+    ])
 
+    transform = np.multiply(m1,m2)
+    
+    vp_vertices = np.hstack((vertices,np.ones([8,1]))) #appending a 1 to the end of each point for proper sizing
+    res_pts = transform @ vp_vertices.T
+    print(res_pts)
+    res_pts = res_pts[:3,:]
 
-    #transform = np.multiply(m1,m2)
-    vertices = vertices.T
-    new_vertices =np.ones([vertices.shape[0]+1, vertices.shape[1]])
-    new_vertices[0:3,:] = vertices
+    # MJ: The shape of res_pts is now 4 by 8, it's now homogeneous coordinates.
+    # MJ: But what you need to return is the x, y, and z coordinates of the points.
+    # MJ: So, you need to get rid of the 4th dimension and then return it.
 
-    vertices_homo = np.matmul(M_cam,new_vertices)
-    vertices_homo = vertices_homo.T
-    return vertices_homo[:,:3]
+    return res_pts
 
 # Projection Transformation
 def project_vertices(vertices, projection_type, near=1, far=10, fov=np.pi/4, aspect=1.0):
@@ -49,9 +58,9 @@ def project_vertices(vertices, projection_type, near=1, far=10, fov=np.pi/4, asp
     l =-1
     b=-1
     M = np.array([
-            [1/(r-l), 0,0, 0],
-            [0,1/(t-b),0,0],
-            [0,0,2/(near-far),-(near+far)/(far-near)],
+            [2/(r-l), 0,0, -(r+l)/(r-l)],
+            [0,2/(t-b),0,-(t+b)/(t-b)],
+            [0,0,2/(near-far),-(near+far)/(near-far)],
             [0,0,0,1]
         ])
 
@@ -64,8 +73,8 @@ def project_vertices(vertices, projection_type, near=1, far=10, fov=np.pi/4, asp
             [0,0,1,0]
         ])
   
-    vp_vertices = np.hstack((vertices,np.ones([8,1]))) #appending a 1 to the end of each point for proper sizing    
-    res_pts = vp_vertices @M.T
+    #vp_vertices = np.hstack((vertices,np.ones([8,1]))) #appending a 1 to the end of each point for proper sizing    
+    res_pts = vertices.T @ M
 
     if projection_type == "perspective":
         res_pts[:,0] = res_pts[:,0]/res_pts[:,3]
@@ -89,7 +98,7 @@ def viewport_transform(vertices, width, height):
 
     res = res_pts[:2,:] #only getting points from the matrix
     print(res)
-    return res.T
+    return res
 
 # Render the scene
 def render_scene(vertices, edges, ax, **kwargs):
@@ -107,7 +116,7 @@ def main():
 
     # Camera transformation
     transformed_vertices = camera_transform(vertices, eye, gaze, up)
-    
+
     # Projection transformations
     perspective_vertices = project_vertices(transformed_vertices, "perspective", near=1, far=10, fov=np.pi/4, aspect=800/600)
 
@@ -126,10 +135,9 @@ def main():
     render_scene(persp_2d, edges, axes[0], color="blue", marker="o")
     render_scene(ortho_2d, edges, axes[1], color="red", marker="o")
 
-
     for ax in axes:
-        ax.set_xlim(0, viewport_width)
-        ax.set_ylim(0, viewport_height)
+        # ax.set_xlim(0, viewport_width)    # MJ: delete this line
+        # ax.set_ylim(0, viewport_height)   # MJ: delete this line
         ax.set_aspect('equal')
         ax.invert_yaxis()
 
